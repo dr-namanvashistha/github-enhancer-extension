@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Enhancer - Test Page</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding: 40px;
+      background-color: #f6f8fa;
+    }
+    .test-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-bottom: 20px;
+      color: #24292e;
+    }
+    .test-element {
+      display: inline-block;
+      padding: 8px 16px;
+      margin: 10px;
+      background-color: #0366d6;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .IssueLabel {
+      display: inline-block;
+      padding: 4px 8px;
+      margin: 5px;
+      background-color: #d73a49;
+      color: white;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .author {
+      font-weight: 600;
+      color: #0366d6;
+      margin: 10px;
+    }
+    .State {
+      display: inline-block;
+      padding: 6px 12px;
+      margin: 10px;
+      border-radius: 20px;
+      font-weight: 600;
+      background-color: #28a745;
+      color: white;
+    }
+    .description {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f6f8fa;
+      border-radius: 6px;
+      color: #586069;
+    }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <h1>GitHub Enhancer Extension - Test Page</h1>
+    
+    <div class="description">
+      This is a test page for the GitHub Enhancer extension. Hover over the elements below to see tooltips.
+      In production, these tooltips will appear on actual GitHub issue and pull request pages.
+    </div>
+
+    <h2>Test Elements</h2>
+    
+    <div>
+      <strong>Author:</strong>
+      <span class="author">octocat</span>
+      <span class="author">github-user</span>
+    </div>
+
+    <div>
+      <strong>Labels:</strong>
+      <span class="IssueLabel" data-name="bug">bug</span>
+      <span class="IssueLabel" data-name="enhancement">enhancement</span>
+      <span class="IssueLabel" data-name="documentation">documentation</span>
+    </div>
+
+    <div>
+      <strong>Status:</strong>
+      <span class="State">Open</span>
+      <span class="State" style="background-color: #6f42c1;">Merged</span>
+      <span class="State" style="background-color: #d73a49;">Closed</span>
+    </div>
+
+    <div>
+      <strong>Generic Elements:</strong>
+      <div class="test-element sidebar-assignee">Assignee Element</div>
+      <div class="test-element sidebar-reviewer">Reviewer Element</div>
+      <div class="test-element sidebar-milestone">Milestone Element</div>
+    </div>
+
+    <div style="margin-top: 30px; padding: 15px; background-color: #fffbdd; border-radius: 6px;">
+      <strong>Note:</strong> To test this extension on actual GitHub pages:
+      <ol>
+        <li>Load the extension in Chrome (chrome://extensions)</li>
+        <li>Visit any GitHub issue or PR (e.g., https://github.com/facebook/react/issues/1)</li>
+        <li>Hover over elements to see tooltips</li>
+      </ol>
+    </div>
+  </div>
+
+  <script src="content.js"></script>
+</body>
+</html>
