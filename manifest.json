@@ -4,11 +4,14 @@
   "version": "1.0.0",
   "description": "Enhances GitHub conversation pages with helpful tooltips",
   "permissions": [],
+  "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
       "matches": [
         "https://github.com/*/issues/*",
-        "https://github.com/*/pull/*"
+        "https://github.com/*/pull/*",
+        "file:///*",
+        "<all_urls>"
       ],
       "js": ["content.js"],
       "css": ["styles.css"],
