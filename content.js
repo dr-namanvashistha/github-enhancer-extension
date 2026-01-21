@@ -15,7 +15,7 @@
 
   // Show tooltip
   function showTooltip(element, text, tooltipElement) {
-    tooltipElement.textContent = text;
+    tooltipElement.innerHTML = text;
     tooltipElement.style.display = 'block';
     
     const rect = element.getBoundingClientRect();
@@ -69,130 +69,198 @@
     });
   }
 
+  // Helper to determine status color/message based on percentage
+  function getCoverageData(percentageStr) {
+    const value = parseFloat(percentageStr);
+    if (isNaN(value)) return { status: 'Unknown', message: 'Unable to calculate coverage status.' };
+    
+    if (value < 50) {
+      return { 
+        status: 'Critical', 
+        message: '🔴 Critical: Coverage is very low. New tests are strictly required.',
+        color: '#d73a49'
+      };
+    } else if (value < 80) {
+      return { 
+        status: 'Warning', 
+        message: '🟡 Warning: Coverage is below standard (80%). Consider adding more tests.',
+        color: '#dbab09'
+      };
+    } else {
+      return { 
+        status: 'Good', 
+        message: '🟢 Good: Coverage meets quality standards.',
+        color: '#28a745'
+      };
+    }
+  }
+
   function addDiffCoverageTooltips() {
     // 1. Coverage Badge (Image)
     const coverageCleanBadges = document.querySelectorAll('img[alt="Coverage"]');
     coverageCleanBadges.forEach(img => {
-       if (img.hasAttribute('data-gh-enhancer-tooltip')) return;
-       img.setAttribute('data-gh-enhancer-tooltip', 'true');
+       if (img.classList.contains('gh-tooltip-target')) return;
        img.classList.add('gh-tooltip-target');
-       img.style.paddingBottom = '2px';
+       img.style.paddingBottom = '3px';
        
-       attachTooltipEvents(img, "Overall codebase coverage");
+       // Try to parse percentage from src or alt if available, otherwise generic
+       // Badge usually has typical text like "Coverage-48%"
+       const match = img.src.match(/Coverage-(\d+)%/);
+       let message = "<strong>Total Project Coverage</strong><br>The percentage of code covered in the entire repository.";
+       if (match) {
+         const data = getCoverageData(match[1]);
+         message = `${message}<br> ${data.message}`;
+       }
+       
+       attachTooltipEvents(img, message);
     });
 
     // 2. Coverage Table (Tests, Skipped, Failures...)
-    const ths = document.querySelectorAll('th');
-    ths.forEach(th => {
+    const headings = document.querySelectorAll('th');
+    const headerMap = {
+      'Tests': '<strong>Total Tests</strong><br>Total number of unit tests executed.<br>ℹ️ Ensure this count increases with new features.',
+      'Skipped': '<strong>Skipped Tests</strong><br>Tests that were bypassed.<br>⚠️ High numbers may indicate technical debt.',
+      'Failures': '<strong>Test Failures</strong><br>Tests that failed assertions.<br>❌ Must be fixed before merging.',
+      'Errors': '<strong>Test Errors</strong><br>Runtime exceptions during testing.<br>🔥 Investigate immediately.',
+      'Time': '<strong>Execution Time</strong><br>Total execution time for the test suite.<br>⏱️ Watch for performance regressions.'
+    };
+    
+    headings.forEach(th => {
       const headerText = th.textContent.trim();
-      let tooltipText = null;
-      
-      const headerMap = {
-        'Tests': "Total tests executed",
-        'Skipped': "Tests skipped during run",
-        'Failures': "Assertion failures",
-        'Errors': "Unhandled Exceptions",
-        'Time': "Test execution time"
-      };
-      
-      tooltipText = headerMap[headerText];
+      let tooltipText = headerMap[headerText];
 
       if (tooltipText) {
-
         // Add tooltip to the corresponding cell in the body
         const index = Array.from(th.parentNode.children).indexOf(th);
-        const table = th.closest('table');
-        if (table) {
-          const tds = table.querySelectorAll(`tbody tr td:nth-child(${index + 1})`);
-          tds.forEach(td => {
-             if (!td.hasAttribute('data-gh-enhancer-tooltip')) {
-               td.setAttribute('data-gh-enhancer-tooltip', 'true');
-               // Wrap content in span
-               td.innerHTML = '<span class="gh-tooltip-target" data-tip="' + tooltipText + '">' + td.innerHTML + '</span>';
-               const span = td.querySelector('.gh-tooltip-target');
-               attachTooltipEvents(span, tooltipText);
+        const tbody = th.closest('table').nextElementSibling || th.closest('table').querySelector('tbody');
+        
+        if (tbody) {
+           const rows = tbody.querySelectorAll('tr');
+           rows.forEach(row => {
+             const cell = row.children[index];
+             if (cell && !cell.hasAttribute('data-gh-enhancer-tooltip')) {
+               cell.setAttribute('data-gh-enhancer-tooltip', 'true');
+               
+               // Decision driven check for Failures/Errors
+               let cellMessage = tooltipText;
+               const cellValue = parseInt(cell.textContent.trim());
+               if ((headerText === 'Failures' || headerText === 'Errors') && cellValue > 0) {
+                 cellMessage = `⛔ BLOCKER: ${cellValue} ${headerText} found. PR cannot be merged.`;
+                 cell.style.color = '#d73a49'; // Visual reinforcement
+                 cell.style.fontWeight = 'bold';
+               }
+
+               cell.innerHTML = '<span class="gh-tooltip-target" data-tip="' + cellMessage + '">' + cell.innerHTML + '</span>';
+               const span = cell.querySelector('.gh-tooltip-target');
+               attachTooltipEvents(span, cellMessage);
              }
-          });
+           });
         }
       }
     });
 
     // 3. Diff Coverage Header
-    const headings = document.querySelectorAll('h1');
-    headings.forEach(h => {
+    const diffHeadings = document.querySelectorAll('h1');
+    diffHeadings.forEach(h => {
       if (h.textContent.includes('Diff Coverage:')) {
          if (!h.hasAttribute('data-gh-enhancer-tooltip')) {
             h.setAttribute('data-gh-enhancer-tooltip', 'true');
             
-            // Split to isolate percentage
-            // Expected format: "Diff Coverage: 91%"
             const parts = h.innerHTML.split('Diff Coverage:');
             if (parts.length > 1) {
-               const percentage = parts[1].trim();
-               h.innerHTML = `Diff Coverage: <span class="gh-tooltip-target" data-tip="Percentage of code covered in this PR">${percentage}</span>`;
+               const percentageStr = parts[1].trim();
+               const percentage = parseFloat(percentageStr);
+               const data = getCoverageData(percentage);
+               
+               // Color logic: Green if > 50, else Red
+               const headerColor = percentage > 50 ? '#2da44e' : '#cf222e';
+               
+               const tooltip = `<strong>Diff Coverage</strong><br>The percentage of modified lines covered by tests in this PR.<br> ${data.message}`;
+               h.innerHTML = `Diff Coverage: <span class="gh-tooltip-target" style="color: ${headerColor} !important;" data-tip="${tooltip}">${percentageStr}</span>`;
                const span = h.querySelector('.gh-tooltip-target');
-               attachTooltipEvents(span, "Percentage of code covered in this PR");
+               attachTooltipEvents(span, tooltip);
             }
          }
       }
     });
+    
+    // 4. File List Parsing (Robust)
+    // Looking for pattern: "filename.py (percentage%): Missing lines ..." or "filename.py (100%)"
+    const listItems = document.querySelectorAll('li');
+    listItems.forEach(li => {
+        if (li.hasAttribute('data-gh-enhancer-tooltip')) return;
+        
+        // Regex to match:
+        // Group 1: Filename (lazy match until space+paren)
+        // Group 2: Percentage (inside parens)
+        // Group 3: Missing lines ranges (optional)
+        const regex = /(.+?)\s+\((\d+(?:\.\d+)?%)\)(?::\s+Missing lines\s+(.+))?/;
+        const match = li.innerText.match(regex); // parse text only
 
-    // 4. File Lists and Summary
-    const lis = document.querySelectorAll('li');
-    lis.forEach(li => {
-      if (li.hasAttribute('data-gh-enhancer-tooltip')) return;
-      
-      const text = li.textContent;
-      
-      // File entries
-      if (text.includes('%') && text.includes('kernel/')) {
-        const fileRegex = /([a-zA-Z0-9_\/]+\.py)\s\((\d+(\.\d+)?%)\)(:\sMissing\slines\s(.*))?/;
-        const match = text.match(fileRegex);
-        if (match) {
-           li.setAttribute('data-gh-enhancer-tooltip', 'true');
-           
-           const filePath = match[1];
-           const percentage = match[2];
-           const missingPart = match[4];
-           const missingNums = match[5];
-
-           let newHtml = `${filePath} <span class="gh-tooltip-target" data-tip="Percentage of code covered in this file' diff">${percentage}</span>`;
-           
-           if (missingPart) {
-             newHtml += `: Missing lines <span class="gh-tooltip-target" data-tip="Missing coverage line numbers">${missingNums}</span>`;
-           }
-           
-           li.innerHTML = newHtml;
-           
-           const spans = li.querySelectorAll('.gh-tooltip-target');
-           spans.forEach(span => {
-              attachTooltipEvents(span, span.getAttribute('data-tip'));
-           });
-        }
-      } 
-      // Summary items
-      else {
-        const summaryMaps = {
-          'Total': { condition: 'lines', tooltip: 'Number of changed lines in this PR' },
-          'Missing': { condition: 'lines', tooltip: 'Number of lines with missing coverage' },
-          'Coverage': { condition: '%', tooltip: 'same as above diff coverage' }
-        };
-
-        for (const [prefix, config] of Object.entries(summaryMaps)) {
-           if (text.startsWith(prefix + ':') && text.includes(config.condition)) {
-             const parts = text.split(':');
-             if (parts.length > 1) {
-                li.setAttribute('data-gh-enhancer-tooltip', 'true');
-                const numPart = parts[1].trim();
-                // Safe string construction
-                li.innerHTML = prefix + ': <span class="gh-tooltip-target" data-tip="' + config.tooltip + '">' + numPart + '</span>';
-                const span = li.querySelector('.gh-tooltip-target');
+        // Validation: Ensure it looks like a file path (contains dots or slashes) to avoid false positives
+        if (match && (match[1].includes('/') || match[1].includes('.'))) {
+            li.setAttribute('data-gh-enhancer-tooltip', 'true');
+            
+            const [_, filename, percentage, missingLines] = match;
+            const data = getCoverageData(percentage);
+            
+            // Construct new HTML with tooltips
+            // 1. Filename: No tooltip (User Request)
+            // 2. Percentage: Status tooltip + Data description
+            // 3. Missing Lines: Tooltip on numbers only (User Request)
+            
+            let newHtml = `${filename}`;
+            
+            const fileTooltip = `<strong>File Coverage</strong><br>The percentage of trackable lines covered in this file.<br> ${data.message}`;
+            newHtml += ` (<span class="gh-tooltip-target" data-tip="${fileTooltip}">${percentage}</span>)`;
+            
+            if (missingLines) {
+                 const missingTooltip = "<strong>Uncovered Lines</strong><br>Specific line numbers in this file that are not executed by tests.<br>⚠️ Risk Area. Add test cases to cover these lines.";
+                 newHtml += `: Missing lines <span class="gh-tooltip-target" data-tip="${missingTooltip}">${missingLines}</span>`;
+            }
+            
+            li.innerHTML = newHtml;
+            
+            // Re-attach events
+            const spans = li.querySelectorAll('.gh-tooltip-target');
+            spans.forEach(span => {
                 attachTooltipEvents(span, span.getAttribute('data-tip'));
-             }
-             break;
-           }
+            });
         }
-      }
+    });
+    
+    // 5. Summary List (Totals)
+    // "Total: 21 lines", "Missing: 18 lines", "Coverage: 14%"
+    // These are also <li> but usually simpler
+    const summaryItems = document.querySelectorAll('li');
+    summaryItems.forEach(li => {
+        if (li.hasAttribute('data-gh-enhancer-tooltip')) return;
+        
+        const text = li.textContent.trim();
+        // Check strict formats
+        let tooltip = null;
+        
+        if (text.startsWith('Total:')) {
+            tooltip = "<strong>Total Lines</strong><br>The number of lines modified in this PR that are eligible for coverage tracking.<br>ℹ️ Base for coverage calculation.";
+        } else if (text.startsWith('Missing:')) {
+            tooltip = "<strong>Missing Lines</strong><br>The count of modified lines that are not executed by any test.<br>⚠️ Reduce this number to improve coverage score.";
+        } else if (text.startsWith('Coverage:')) {
+            // "Coverage: 14%"
+            const val = parseFloat(text.split(':')[1]);
+            const data = getCoverageData(val);
+            tooltip = `<strong>Diff Coverage</strong><br>The percentage of modified lines covered by tests in this PR.<br> ${data.message}`;
+        }
+        
+        if (tooltip) {
+             li.setAttribute('data-gh-enhancer-tooltip', 'true');
+             // Wrap the value part
+             const parts = li.innerHTML.split(':');
+             if (parts.length > 1) {
+                 li.innerHTML = `${parts[0]}: <span class="gh-tooltip-target" data-tip="${tooltip}">${parts[1]}</span>`;
+                 const span = li.querySelector('.gh-tooltip-target');
+                 attachTooltipEvents(span, tooltip);
+             }
+        }
     });
   }
 
