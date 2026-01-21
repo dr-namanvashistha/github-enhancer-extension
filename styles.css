@@ -36,10 +36,11 @@
   }
 }
 
-/* [data-gh-enhancer-tooltip] removed to prevent container-level underlines */
+/* Tooltip target styling */
 .gh-tooltip-target {
   cursor: help;
-  border-bottom: 1px dotted #999;
+  /* Use GitHub's text color variable to avoid link colors (blue) and support dark mode */
+  border-bottom: 1px dotted var(--color-fg-default, #999); 
 }
 [data-gh-enhancer-tooltip]:hover,
 .gh-tooltip-target:hover {
